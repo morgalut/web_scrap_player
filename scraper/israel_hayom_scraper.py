@@ -6,13 +6,14 @@ from scraper.base_scraper import BaseScraper
 from scraper.utils import append_row_to_csv
 
 class IsraelHayomScraper(BaseScraper):
-    def __init__(self, csv_path, output_csv, image_dir="images", delay=2):
+    def __init__(self, csv_path, output_csv, image_dir="images", delay=2, batch_size=5):
         super().__init__(headless=True)
         self.base_url = "https://www.israelhayom.co.il"
         self.csv_path = csv_path
         self.output_csv = output_csv
         self.image_dir = image_dir
         self.delay = delay
+        self.batch_size = batch_size  # <-- NEW
 
         os.makedirs(self.image_dir, exist_ok=True)
         os.makedirs("logs", exist_ok=True)
@@ -132,3 +133,19 @@ class IsraelHayomScraper(BaseScraper):
                 for j, row in enumerate(batch.to_dict(orient="records"))
             ]
             await asyncio.gather(*tasks)
+
+    @classmethod
+    def can_handle(cls, csv_path):
+        import csv
+        try:
+            with open(csv_path, encoding="utf-8") as f:
+                first_line = f.readline().strip().lower()
+                if first_line.startswith("id,url") or first_line.startswith("id,link"):
+                    return True
+                if "," in first_line:
+                    parts = first_line.split(",")
+                    if len(parts) == 2 and (parts[1].startswith("/") or "makorrishon" in parts[1]):
+                        return True
+        except Exception:
+            pass
+        return False
